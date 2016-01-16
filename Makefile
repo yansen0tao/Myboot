@@ -5,6 +5,8 @@ SSRCS = start.S
 SRCS = main.c
 LIB_SRCS = lib1.c
 LIB_SRCS += driver/mem.S
+LIB_SRCS += driver/mmu.c
+LIB_SRCS += driver/led.c
 
 SOBJS	= $(SSRCS:%.S=%.o$(SUFFIX))
 OBJS	= $(SRCS:%.c=%.o$(SUFFIX))
@@ -38,6 +40,7 @@ firmware:clean firmware.elf firmware.asm firmware.map
 
 .PHONY:
 clean:
-	rm -rf *.bak *.o *.elf *.bin *.asm *.a *.map
+	rm -rf *.bak *.elf *.bin *.asm *.a *.map
+	rm -rf driver/*.o *.o
 
 

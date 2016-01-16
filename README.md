@@ -1,4 +1,6 @@
-#This is a markdown file
+###MMU的作用###
+  - 虚拟地址转化为物理地址
+  - 控制内存访问权限
 
 
 

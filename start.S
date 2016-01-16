@@ -1,4 +1,7 @@
-﻿
+
+#include <register.h>
+#include <map.h>
+
 .text
 .global __start
 __start:
@@ -48,13 +51,14 @@ _FIQ:
 reset:
 	bl set_svc
 	bl set_peri_port
+	bl disable_watchdog		@如果不关闭看门狗，后续的延时程序会导致不能喂狗，系统重启	
 	bl invalidate_caches
 	bl disable_mmu_caches
 	bl init_stack
-	bl led_on
 	bl init_clock
 	bl mem_init
 	bl main
+	bl led_on
 	nop
 
 @set svc and disable interrupt	
@@ -89,8 +93,15 @@ set_peri_port:
 	mcr	p15,0,r0,c15,c2,4   @ 256M(0x70000000-0x7fffffff)
 	mov pc, lr
 	
+#define pWTCON 0x7e004000
+disable_watchdog:
+		ldr r0, =pWTCON
+		mov r1, #0x0
+		str r1, [r0]
+		mov pc, lr	
+	
 init_stack:
-	ldr sp, =0x5fffffff @Arm的栈是倒生长的，因此把栈顶指针放在内存的末尾	
+	ldr sp, =DDR_BASE+DDR_SIZE @Arm的栈是倒生长的
 	mov pc, lr
 
 /*
@@ -98,10 +109,6 @@ init_stack:
 **1、地板原理图搜索LED，找到对应的NLED1，核心板搜索NLED1，找到对应的GPIOM0
 **2、s3c6410芯片手册，搜索GPIOM0
 */
-
-#define GPMCON	(0x7F008820)
-#define GPMDAT	(0x7F008824)
-
 led_on:
 	ldr r0, =GPMCON
 	ldr r1, =0x1111
@@ -128,19 +135,6 @@ led_on:
 **NOTE:这里没有使用uboot推荐的配置，使用samsung手册推荐的配置
 */	
 
-#define APLL_LOCK (0x7E00F000)	@Control PLL locking period for APLL,涉及到频率的问题，应该使得频率稳定才可以使用
-#define MPLL_LOCK (0x7E00F004)
-#define CLK_SRC (0x7E00F01C)	@Select clock source		
-#define CLK_DIV0 (0x7E00F020)	@Set clock divider ratio
-#define APLL_CON (0x7E00F00C)	@Control PLL output frequency for APLL
-#define MPLL_CON (0x7E00F010)
-#define HCLK_GATE (0x7E00F030)	@Control HCLK clock gating
-#define PCLK_GATE (0x7E00F034)
-#define OTHERS (0x7E00_F900)	@Others control register
-#define	APLL_VAL (1<<31|3<<8|266<<16|1<<0) @output 533mhz
-#define	MPLL_VAL (2<<31|266<<16|3<<8|1<<0)	@output	266mhz
-#define DIV0_VAL (0<<0|0<<4|1<<8|0<<9|3<<12)
-
 init_clock:
 	@PLL_LOCK使用默认值
 
@@ -149,16 +143,17 @@ init_clock:
 	**APLL MPLL DIVarm DIVhclk2 DIVhclk DIVpclk		
 	**533  266  0/533  0/266    1/133   3/66
 	*/	
+	
+	@这里配置为同步模式
+	ldr r0, =OTHERS
+	ldr r1, [r0]
+	orr r1, r1, #0xc0
+	str r1, [r0]
 
 	@配置APLL
 	ldr r0, =APLL_CON
 	ldr r1, =APLL_VAL
-	str r1, [r0]	
-
-	@配置MPLL
-	ldr r0, =MPLL_CON
-	ldr r1, =MPLL_VAL
-	str r1, [r0]	
+	str r1, [r0]
 
 	ldr r0, =CLK_DIV0
 	ldr r1, = DIV0_VAL
