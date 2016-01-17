@@ -12,6 +12,7 @@
 
 #define LED_MAX		(4)
 
+#define TTB_BASE	(DDR_BASE)
 
 
 
